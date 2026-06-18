@@ -25,8 +25,9 @@
       <div class="view-toggle" role="tablist" aria-label="View mode">
         <button id="viewCards" class="toggle-btn active" role="tab" title="Card view">▦ Cards</button>
         <button id="viewTable" class="toggle-btn" role="tab" title="Table view">☰ Table</button>
-        <button id="viewGroups" class="toggle-btn" role="tab" title="Group by space">⊞ Groups</button>
       </div>
+      <button id="groupToggle" class="icon-btn" title="Group by space">⊞</button>
+      <button id="compactToggle" class="icon-btn" title="Compact view">≣</button>
       <select id="timeSelect" class="sort-select" title="Time range">
         <option value="all">All time</option>
         <option value="today">Today</option>
@@ -73,7 +74,11 @@
         <i class="lv lv0"></i><i class="lv lv1"></i><i class="lv lv2"></i><i class="lv lv3"></i><i class="lv lv4"></i>
         more</span>
     </div>
-    <div class="calendar-heatmap" id="calendarHeatmap"></div>
+    <div class="calendar-body">
+      <div class="calendar-heatmap" id="calendarHeatmap"></div>
+      <aside class="calendar-info" id="calendarInfo"></aside>
+    </div>
+    <p class="calendar-hint">Click a day to filter · drag across days to select a range</p>
   </section>
 
   <section class="facets">

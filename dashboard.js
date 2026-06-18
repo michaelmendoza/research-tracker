@@ -3,16 +3,18 @@ const $ = (id) => document.getElementById(id);
 const state = {
   items: [],
   batches: {},
-  view: 'cards',          // 'cards' | 'table'
+  view: 'cards',          // 'cards' | 'table' — how each item renders
+  compact: false,         // dense rows / pill cards
+  groupBy: 'none',        // 'none' | 'space' — orthogonal to view
   query: '',
   sort: 'newest',
   activeTags: new Set(),
   activeDomains: new Set(),
   activeBatch: null,      // collection id, or null
   time: 'all',            // 'all' | 'today' | 'week' | 'month'
-  day: null,              // 'YYYY-MM-DD' from a calendar click; overrides `time`
+  range: null,            // { start, end } day keys from the calendar; overrides `time`
   selected: new Set(),
-  collapsed: new Set(),  // collapsed group ids in Groups view
+  collapsed: new Set(),   // collapsed group ids when grouping by space
   editingId: null,
   showDomains: false,
   showTags: true,
@@ -65,6 +67,18 @@ function dayKey(ts) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function dayKeyTs(k) {
+  return new Date(`${k}T00:00:00`).getTime();
+}
+
+function normRange(a, b) {
+  return dayKeyTs(a) <= dayKeyTs(b) ? { start: a, end: b } : { start: b, end: a };
+}
+
+function prettyDay(k) {
+  return new Date(`${k}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function escapeHtml(s) {
   return (s || '').replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -101,9 +115,8 @@ document.addEventListener('error', (e) => {
 /* ---------- filtering & sorting ---------- */
 
 function timeBounds() {
-  if (state.day) {
-    const start = new Date(`${state.day}T00:00:00`).getTime();
-    return [start, start + 86400000];
+  if (state.range) {
+    return [dayKeyTs(state.range.start), dayKeyTs(state.range.end) + 86400000];
   }
   const now = Date.now();
   if (state.time === 'today') {
@@ -118,7 +131,7 @@ function timeBounds() {
 
 function anyFilterActive() {
   return !!(state.query || state.activeTags.size || state.activeDomains.size ||
-    state.activeBatch || state.time !== 'all' || state.day);
+    state.activeBatch || state.time !== 'all' || state.range);
 }
 
 function visibleItems() {
@@ -198,19 +211,16 @@ function renderCollections() {
     .sort((a, b) => b.savedAt - a.savedAt);
 
   $('collectionsLine').hidden = list.length === 0;
+  // Chips only filter; manage (rename/delete) spaces from the grouped view.
   $('collectionsBar').innerHTML = list.map((b) => {
     const n = counts.get(b.id);
-    const icon = b.source === 'all' ? '⊞' : '▤';
-    const label = b.label || (b.source === 'all' ? 'All windows' : 'Window');
     const active = state.activeBatch === b.id;
-    return `<span class="coll-chip ${active ? 'active' : ''}">
-      <button class="coll-main" data-batch="${b.id}" title="${escapeHtml(label)} — saved ${relativeDate(b.savedAt)}">
-        <span class="coll-icon">${icon}</span>
-        <span class="coll-label">${escapeHtml(label)}</span>
+    return `<button class="coll-chip ${active ? 'active' : ''}" data-batch="${b.id}"
+        title="${escapeHtml(batchName(b))} — saved ${relativeDate(b.savedAt)}">
+        <span class="coll-icon">${batchIcon(b)}</span>
+        <span class="coll-label">${escapeHtml(batchName(b))}</span>
         <span class="coll-meta">${n} · ${relativeDate(b.savedAt)}</span>
-      </button>
-      <button class="coll-del" data-batch-del="${b.id}" title="Delete this collection and its ${n} item${n === 1 ? '' : 's'}">✕</button>
-    </span>`;
+      </button>`;
   }).join('');
 }
 
@@ -254,8 +264,10 @@ function renderActiveFilters() {
   }
   state.activeTags.forEach((t) => chips.push(pill(`tag:${t}`, `#${t}`)));
   state.activeDomains.forEach((d) => chips.push(pill(`domain:${d}`, d)));
-  if (state.day) chips.push(pill('time', `on ${state.day}`));
-  else if (state.time !== 'all') chips.push(pill('time', TIME_LABELS[state.time]));
+  if (state.range) {
+    const r = state.range;
+    chips.push(pill('time', r.start === r.end ? `on ${prettyDay(r.start)}` : `${prettyDay(r.start)} – ${prettyDay(r.end)}`));
+  } else if (state.time !== 'all') chips.push(pill('time', TIME_LABELS[state.time]));
 
   $('activeFilters').hidden = chips.length === 0;
   $('activeFiltersChips').innerHTML = chips.join('');
@@ -294,9 +306,10 @@ function renderCalendar() {
       const k = dayKey(d.getTime());
       const n = counts.get(k) || 0;
       const lv = n === 0 ? 0 : Math.min(4, Math.ceil((n / max) * 4));
-      const active = state.day === k ? ' active' : '';
+      const ts = dayKeyTs(k);
+      const sel = state.range && ts >= dayKeyTs(state.range.start) && ts <= dayKeyTs(state.range.end) ? ' sel' : '';
       const label = `${n} item${n === 1 ? '' : 's'} · ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
-      cells += `<i class="cal-cell lv${lv}${active}" data-day="${k}" title="${label}"></i>`;
+      cells += `<i class="cal-cell lv${lv}${sel}" data-day="${k}" title="${label}"></i>`;
     }
     cols += `<div class="cal-col">${cells}</div>`;
   }
@@ -305,7 +318,58 @@ function renderCalendar() {
     `<div class="cal-monthrow">${months}</div><div class="cal-grid">${cols}</div>`;
 }
 
+function itemsOnDay(k) {
+  return state.items.filter((it) => dayKey(it.savedAt) === k);
+}
+
+// The info sidebar reflects (in priority): the day under the cursor, else the
+// selected range's summary, else a hint.
+function renderCalInfo(hoverKey) {
+  const box = $('calendarInfo');
+  if (!box) return;
+
+  if (hoverKey) {
+    const list = itemsOnDay(hoverKey).sort((a, b) => b.savedAt - a.savedAt);
+    const rows = list.slice(0, 7).map((it) =>
+      `<li title="${escapeHtml(it.title)}"><span class="ci-dot"></span>${escapeHtml(it.title)}</li>`).join('');
+    box.innerHTML = `
+      <div class="ci-date">${prettyDay(hoverKey)}</div>
+      <div class="ci-count">${list.length} item${list.length === 1 ? '' : 's'}</div>
+      ${list.length ? `<ul class="ci-list">${rows}</ul>${list.length > 7 ? `<div class="ci-more">+${list.length - 7} more</div>` : ''}` : '<div class="ci-empty">Nothing saved</div>'}`;
+    return;
+  }
+
+  if (state.range) {
+    const [from, to] = [dayKeyTs(state.range.start), dayKeyTs(state.range.end) + 86400000];
+    const count = state.items.filter((i) => i.savedAt >= from && i.savedAt < to).length;
+    const span = state.range.start === state.range.end
+      ? prettyDay(state.range.start)
+      : `${prettyDay(state.range.start)} – ${prettyDay(state.range.end)}`;
+    box.innerHTML = `<div class="ci-date">${span}</div><div class="ci-count">${count} item${count === 1 ? '' : 's'} selected</div><div class="ci-hint">Hover a day for details</div>`;
+    return;
+  }
+
+  box.innerHTML = '<div class="ci-hint">Hover a day to preview · click or drag to filter</div>';
+}
+
+// Compact card = a pill; the open/edit/delete controls slide in on the right on
+// hover, the way the old collection chip revealed its delete button.
+function cardPillHtml(item) {
+  return `
+      <div class="card-pill" data-id="${item.id}" tabindex="0" title="${escapeHtml(item.url)}">
+        ${faviconHtml(item, 'cp-favicon')}
+        <span class="cp-title">${escapeHtml(item.title)}</span>
+        <span class="cp-domain">${escapeHtml(item.domain)}</span>
+        <span class="cp-actions">
+          <button class="card-action" data-act="open" title="Open page">↗</button>
+          <button class="card-action" data-act="edit" title="Edit">✎</button>
+          <button class="card-action delete" data-act="delete" title="Delete">✕</button>
+        </span>
+      </div>`;
+}
+
 function cardHtml(item, i) {
+  if (state.compact) return cardPillHtml(item);
   return `
       <article class="card" data-id="${item.id}" style="--i:${Math.min(i, 20)}" tabindex="0"
         title="${escapeHtml(item.url)}">
@@ -366,14 +430,15 @@ function renderGroups(items) {
             ${key !== '__none__' ? `<button class="btn-soft sm danger" data-group-del="${key}">Delete</button>` : ''}
           </span>
         </header>
-        ${collapsed ? '' : `<div class="cards-grid group-grid">${list.map((it, i) => cardHtml(it, i)).join('')}</div>`}
+        ${collapsed ? '' : (state.view === 'table'
+          ? tableBlockHtml(list)
+          : `<div class="cards-grid group-grid">${list.map((it, i) => cardHtml(it, i)).join('')}</div>`)}
       </section>`;
   }).join('');
 }
 
-function renderTable(items) {
-  $('tableBody').innerHTML = items
-    .map((item) => `
+function tableRowHtml(item) {
+  return `
       <tr data-id="${item.id}">
         <td class="col-check"><input type="checkbox" data-act="select" ${state.selected.has(item.id) ? 'checked' : ''}></td>
         <td><span class="t-title">${faviconHtml(item, 't-favicon')}
@@ -386,9 +451,22 @@ function renderTable(items) {
           <button class="card-action" data-act="edit" title="Edit">✎</button>
           <button class="card-action delete" data-act="delete" title="Delete">✕</button>
         </td>
-      </tr>`)
-    .join('');
+      </tr>`;
+}
+
+function renderTable(items) {
+  $('tableBody').innerHTML = items.map(tableRowHtml).join('');
   $('checkAll').checked = items.length > 0 && items.every((i) => state.selected.has(i.id));
+}
+
+// A standalone table for one group section (no master select-all header).
+function tableBlockHtml(items) {
+  return `<div class="table-wrap"><table class="research-table">
+    <thead><tr>
+      <th class="col-check"></th><th>Title</th><th>Domain</th><th>Tags</th><th>Note</th><th>Added</th><th class="col-actions"></th>
+    </tr></thead>
+    <tbody>${items.map(tableRowHtml).join('')}</tbody>
+  </table></div>`;
 }
 
 function render() {
@@ -403,12 +481,16 @@ function render() {
   $('tagsLine').hidden = !state.showTags;
   $('statDomainsBtn').classList.toggle('active', state.showDomains);
   $('statTagsBtn').classList.toggle('active', state.showTags);
-  $('statWeekBtn').classList.toggle('active', state.time === 'week' && !state.day);
+  $('statWeekBtn').classList.toggle('active', state.time === 'week' && !state.range);
+  $('groupToggle').classList.toggle('active', state.groupBy === 'space');
+  $('compactToggle').classList.toggle('active', state.compact);
+  document.body.classList.toggle('compact', state.compact);
   syncTimeSelect();
 
   $('calendarPanel').hidden = !state.calendarOpen;
   $('calendarToggle').classList.toggle('active', state.calendarOpen);
   renderCalendar();
+  renderCalInfo(null);
 
   const isEmpty = items.length === 0;
   const hasFilters = anyFilterActive();
@@ -421,12 +503,13 @@ function render() {
       : 'Click the extension icon on any page to start capturing tabs, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.';
   }
 
-  $('cardsGrid').hidden = state.view !== 'cards' || isEmpty;
-  $('tableWrap').hidden = state.view !== 'table' || isEmpty;
-  $('groupsWrap').hidden = state.view !== 'groups' || isEmpty;
-  if (state.view === 'cards') renderCards(items);
-  else if (state.view === 'table') renderTable(items);
-  else renderGroups(items);
+  const grouped = state.groupBy === 'space';
+  $('cardsGrid').hidden = grouped || state.view !== 'cards' || isEmpty;
+  $('tableWrap').hidden = grouped || state.view !== 'table' || isEmpty;
+  $('groupsWrap').hidden = !grouped || isEmpty;
+  if (grouped) renderGroups(items);
+  else if (state.view === 'cards') renderCards(items);
+  else renderTable(items);
 
   renderBulkBar();
 }
@@ -437,8 +520,10 @@ function render() {
 function syncTimeSelect() {
   const sel = $('timeSelect');
   let dayOpt = sel.querySelector('option[value="__day__"]');
-  if (state.day) {
-    if (!dayOpt) { dayOpt = new Option('Calendar day', '__day__'); sel.appendChild(dayOpt); }
+  if (state.range) {
+    const label = state.range.start === state.range.end ? 'Calendar day' : 'Calendar range';
+    if (!dayOpt) { dayOpt = new Option(label, '__day__'); sel.appendChild(dayOpt); }
+    else dayOpt.textContent = label;
     sel.value = '__day__';
   } else {
     if (dayOpt) dayOpt.remove();
@@ -517,7 +602,7 @@ function clearAllFilters() {
   state.activeDomains.clear();
   state.activeBatch = null;
   state.time = 'all';
-  state.day = null;
+  state.range = null;
   render();
 }
 
@@ -580,7 +665,7 @@ function handleItemAction(e) {
 }
 
 function handleCardKeydown(e) {
-  if (e.key === 'Enter' && e.target.classList.contains('card')) {
+  if (e.key === 'Enter' && (e.target.classList.contains('card') || e.target.classList.contains('card-pill'))) {
     const item = state.items.find((i) => i.id === e.target.dataset.id);
     if (item) chrome.tabs.create({ url: item.url, active: false });
   }
@@ -758,16 +843,26 @@ $('sortSelect').addEventListener('change', (e) => { state.sort = e.target.value;
 
 $('viewCards').addEventListener('click', () => setView('cards'));
 $('viewTable').addEventListener('click', () => setView('table'));
-$('viewGroups').addEventListener('click', () => setView('groups'));
 
 function setView(view) {
   state.view = view;
   $('viewCards').classList.toggle('active', view === 'cards');
   $('viewTable').classList.toggle('active', view === 'table');
-  $('viewGroups').classList.toggle('active', view === 'groups');
   chrome.storage.local.set({ rtView: view });
   render();
 }
+
+$('groupToggle').addEventListener('click', () => {
+  state.groupBy = state.groupBy === 'space' ? 'none' : 'space';
+  chrome.storage.local.set({ rtGroupBy: state.groupBy });
+  render();
+});
+
+$('compactToggle').addEventListener('click', () => {
+  state.compact = !state.compact;
+  chrome.storage.local.set({ rtCompact: state.compact });
+  render();
+});
 
 /* ---------- events: facets & filters ---------- */
 
@@ -806,28 +901,25 @@ async function deleteCollection(id) {
   showToast('Space deleted');
 }
 
-$('collectionsBar').addEventListener('click', async (e) => {
-  const del = e.target.closest('[data-batch-del]');
-  if (del) { await deleteCollection(del.dataset.batchDel); return; }
-  const main = e.target.closest('[data-batch]');
-  if (main) {
-    const id = main.dataset.batch;
-    state.activeBatch = state.activeBatch === id ? null : id;
-    render();
-  }
+$('collectionsBar').addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-batch]');
+  if (!chip) return;
+  const id = chip.dataset.batch;
+  state.activeBatch = state.activeBatch === id ? null : id;
+  render();
 });
 
 $('timeSelect').addEventListener('change', (e) => {
   if (e.target.value === '__day__') return;  // synthetic option; ignore
   state.time = e.target.value;
-  state.day = null;
+  state.range = null;
   render();
 });
 
 $('statTotalBtn').addEventListener('click', clearAllFilters);
 $('statDomainsBtn').addEventListener('click', () => { state.showDomains = !state.showDomains; render(); });
 $('statTagsBtn').addEventListener('click', () => { state.showTags = !state.showTags; render(); });
-$('statWeekBtn').addEventListener('click', () => { state.time = 'week'; state.day = null; render(); });
+$('statWeekBtn').addEventListener('click', () => { state.time = 'week'; state.range = null; render(); });
 
 $('activeFiltersChips').addEventListener('click', (e) => {
   const chip = e.target.closest('[data-remove]');
@@ -835,7 +927,7 @@ $('activeFiltersChips').addEventListener('click', (e) => {
   const r = chip.dataset.remove;
   if (r === 'query') { state.query = ''; $('searchInput').value = ''; }
   else if (r === 'batch') state.activeBatch = null;
-  else if (r === 'time') { state.time = 'all'; state.day = null; }
+  else if (r === 'time') { state.time = 'all'; state.range = null; }
   else if (r.startsWith('tag:')) state.activeTags.delete(r.slice(4));
   else if (r.startsWith('domain:')) state.activeDomains.delete(r.slice(7));
   render();
@@ -851,12 +943,54 @@ $('calendarToggle').addEventListener('click', async () => {
   render();
 });
 
-$('calendarHeatmap').addEventListener('click', (e) => {
+// Drag to pick a date range; a plain click is a one-day range (and clicking the
+// same single day again clears it). During the drag we only repaint the heatmap
+// for responsiveness; the full filtered re-render happens on release.
+const drag = { active: false, start: null, last: null, moved: false, before: null };
+
+$('calendarHeatmap').addEventListener('mousedown', (e) => {
+  const cell = e.target.closest('[data-day]');
+  if (!cell) return;
+  e.preventDefault();
+  drag.active = true;
+  drag.moved = false;
+  drag.start = cell.dataset.day;
+  drag.last = drag.start;
+  drag.before = state.range;
+  state.range = { start: drag.start, end: drag.start };
+  state.time = 'all';
+  renderCalendar();
+});
+
+$('calendarHeatmap').addEventListener('mouseover', (e) => {
   const cell = e.target.closest('[data-day]');
   if (!cell) return;
   const k = cell.dataset.day;
-  state.day = state.day === k ? null : k;
-  if (state.day) state.time = 'all';
+  if (drag.active) {
+    if (k !== drag.last) {
+      drag.moved = true;
+      drag.last = k;
+      state.range = normRange(drag.start, k);
+      renderCalendar();
+      renderCalInfo(null);
+    }
+  } else {
+    renderCalInfo(k);
+  }
+});
+
+$('calendarHeatmap').addEventListener('mouseleave', () => {
+  if (!drag.active) renderCalInfo(null);
+});
+
+document.addEventListener('mouseup', () => {
+  if (!drag.active) return;
+  drag.active = false;
+  // Single click on the already-selected single day → clear the filter.
+  const b = drag.before;
+  if (!drag.moved && b && b.start === b.end && b.start === drag.start) {
+    state.range = null;
+  }
   render();
 });
 
@@ -915,17 +1049,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 /* ---------- init ---------- */
 
 async function init() {
-  const prefs = await chrome.storage.local.get([THEME_KEY, 'rtView', 'rtCalOpen']);
+  const prefs = await chrome.storage.local.get([THEME_KEY, 'rtView', 'rtGroupBy', 'rtCompact', 'rtCalOpen']);
   if (prefs[THEME_KEY]) {
     document.documentElement.dataset.theme = prefs[THEME_KEY];
     try { localStorage.setItem('rtTheme', prefs[THEME_KEY]); } catch (e) { /* ignore */ }
   }
-  if (['cards', 'table', 'groups'].includes(prefs.rtView)) {
+  if (prefs.rtView === 'table' || prefs.rtView === 'cards') {
     state.view = prefs.rtView;
     $('viewCards').classList.toggle('active', state.view === 'cards');
     $('viewTable').classList.toggle('active', state.view === 'table');
-    $('viewGroups').classList.toggle('active', state.view === 'groups');
   }
+  if (prefs.rtGroupBy === 'space') state.groupBy = 'space';
+  state.compact = prefs.rtCompact === true;
   state.calendarOpen = prefs.rtCalOpen === true;
 
   state.items = await rtGetItems();

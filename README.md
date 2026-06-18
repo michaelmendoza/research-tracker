@@ -26,12 +26,14 @@ Duplicates are detected by URL and skipped automatically. Browser-internal pages
 
 Open it from the popup (**Open dashboard →**) or with `Alt+Shift+D`.
 
-- **Cards · Table · Groups** views — cards for visual browsing, table for dense scanning with bulk actions, **Groups** to see each saved window/space as its own collapsible section
-- **Spaces** — windows saved with **Save window** / **Save all windows** become named spaces; rename them, filter to them (chip or Groups view), move items between them (bulk **Move to space** or per-item), or delete a whole space
+- **Cards ⇄ Table** views — cards for visual browsing, table for dense scanning with bulk actions
+- **Group by space** (⊞ toggle) — works with either view; breaks items into collapsible sections per saved window/space, each with rename / open-all / delete
+- **Compact** (≣ toggle) — denser table rows, and cards collapse into pills whose controls appear on hover
+- **Spaces** — windows saved with **Save window** / **Save all windows** become named spaces; filter to them via chips, rename and manage them in the grouped view, move items between them (bulk **Move to space** or per-item), or delete a whole space
 - **Search** (`/` to focus) across titles, URLs, domains, notes, and tags
 - **Tag & domain chips** — click to filter, combine multiple; reveal them from the *tags* / *domains* stat
 - **Time range** — a toolbar dropdown (All time / Today / This week / This month); clicking the *this week* stat is a shortcut
-- **Activity calendar** — a contribution-style heatmap (toggle ▤); click a day to filter to it
+- **Activity calendar** — a contribution-style heatmap (toggle ▤); hover a day for a preview in the side panel, click to filter, or drag across days to select a range
 - **Sort** by newest, oldest, title, or domain
 - **Edit** any item's title, tags, note, and space
 - **Bulk actions** (table view) — select items to add tags, move to a space, open all, or delete; every delete asks for confirmation
