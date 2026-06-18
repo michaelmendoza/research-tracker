@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Research Tracker",
+  "description": "Capture and organize your web research. Save the current tab, a whole window, or everything — then browse it as cards or a table.",
+  "version": "1.0.0",
+  "permissions": ["tabs", "storage", "contextMenus"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Research Tracker",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "save-current-tab": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Save the current tab to Research Tracker"
+    },
+    "open-dashboard": {
+      "suggested_key": { "default": "Alt+Shift+D" },
+      "description": "Open the Research Tracker dashboard"
+    }
+  }
+}

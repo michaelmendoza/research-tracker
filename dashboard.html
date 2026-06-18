@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research Tracker</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◎</span>
+      <h1>Research<span class="brand-accent">Tracker</span></h1>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input id="searchInput" type="search" placeholder="Search titles, notes, tags, domains…  ( / )" autocomplete="off" />
+    </div>
+
+    <div class="topbar-controls">
+      <div class="view-toggle" role="tablist" aria-label="View mode">
+        <button id="viewCards" class="toggle-btn active" role="tab" title="Card view">▦ Cards</button>
+        <button id="viewTable" class="toggle-btn" role="tab" title="Table view">☰ Table</button>
+      </div>
+      <select id="sortSelect" class="sort-select" title="Sort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="title">Title A–Z</option>
+        <option value="domain">Domain A–Z</option>
+      </select>
+      <div class="menu-wrap">
+        <button id="exportBtn" class="icon-btn" title="Export">⤓</button>
+        <div class="menu" id="exportMenu">
+          <button id="exportJson">Export JSON</button>
+          <button id="exportCsv">Export CSV</button>
+        </div>
+      </div>
+      <button id="themeToggle" class="icon-btn" title="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <section class="stats" id="statsRow">
+    <div class="stat"><span class="stat-num" id="statTotal">0</span><span class="stat-label">items</span></div>
+    <div class="stat"><span class="stat-num" id="statDomains">0</span><span class="stat-label">domains</span></div>
+    <div class="stat"><span class="stat-num" id="statTags">0</span><span class="stat-label">tags</span></div>
+    <div class="stat"><span class="stat-num" id="statWeek">0</span><span class="stat-label">this week</span></div>
+  </section>
+
+  <section class="tag-bar" id="tagBar"></section>
+
+  <main id="content">
+    <div class="cards-grid" id="cardsGrid"></div>
+
+    <div class="table-wrap" id="tableWrap" hidden>
+      <table class="research-table">
+        <thead>
+          <tr>
+            <th class="col-check"><input type="checkbox" id="checkAll" title="Select all" /></th>
+            <th>Title</th>
+            <th>Domain</th>
+            <th>Tags</th>
+            <th>Note</th>
+            <th>Added</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" id="emptyState" hidden>
+      <div class="empty-orb">◎</div>
+      <h2 id="emptyTitle">No research yet</h2>
+      <p id="emptyText">Click the extension icon on any page to start capturing tabs, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.</p>
+    </div>
+  </main>
+
+  <div class="bulk-bar" id="bulkBar" hidden>
+    <span id="bulkCount">0 selected</span>
+    <button id="bulkDelete" class="btn-danger">Delete selected</button>
+    <button id="bulkClear" class="btn-plain">Clear</button>
+  </div>
+
+  <dialog class="edit-modal" id="editModal">
+    <form method="dialog" id="editForm">
+      <h3>Edit item</h3>
+      <label>Title
+        <input id="editTitle" type="text" required />
+      </label>
+      <label>Tags <span class="label-hint">comma separated</span>
+        <input id="editTags" type="text" />
+      </label>
+      <label>Note
+        <textarea id="editNote" rows="3"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="editCancel" class="btn-plain">Cancel</button>
+        <button type="submit" class="btn-save">Save changes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="storage.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

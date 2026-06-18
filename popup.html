@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Research Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+
+  <header class="popup-header">
+    <div class="brand">
+      <span class="brand-mark">◎</span>
+      <span class="brand-name">Research Tracker</span>
+    </div>
+    <span class="count-pill" id="itemCount" title="Saved items">0</span>
+  </header>
+
+  <section class="tab-preview" id="tabPreview">
+    <img id="tabFavicon" class="tab-favicon" alt="" />
+    <div class="tab-meta">
+      <div class="tab-title" id="tabTitle">Loading…</div>
+      <div class="tab-domain" id="tabDomain"></div>
+    </div>
+  </section>
+
+  <section class="fields">
+    <input id="tagsInput" type="text" placeholder="Tags — comma separated (e.g. ai, papers)" autocomplete="off" />
+    <textarea id="noteInput" rows="2" placeholder="Why is this interesting? (optional note)"></textarea>
+  </section>
+
+  <section class="actions">
+    <button id="saveTab" class="btn btn-primary">
+      <span class="btn-icon">＋</span> Save this tab
+    </button>
+    <div class="btn-row">
+      <button id="saveWindow" class="btn btn-ghost">Save window <span class="hint" id="windowCount"></span></button>
+      <button id="saveAll" class="btn btn-ghost">Save all windows <span class="hint" id="allCount"></span></button>
+    </div>
+  </section>
+
+  <footer class="popup-footer">
+    <button id="openDashboard" class="link-btn">Open dashboard →</button>
+    <span class="kbd-hint" title="Keyboard shortcut">Alt+Shift+S saves anywhere</span>
+  </footer>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="storage.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
