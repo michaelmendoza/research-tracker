@@ -33,8 +33,8 @@ Open it from the popup (**Open dashboard →**) or with `Alt+Shift+D`.
 - **Search** (`/` to focus) across titles, URLs, domains, notes, and tags
 - **Tag & domain chips** — click to filter, combine multiple; reveal them from the *tags* / *domains* stat
 - **Time range** — a toolbar dropdown (All time / Today / This week / This month); clicking the *this week* stat is a shortcut
-- **Activity calendar** — a contribution-style heatmap (toggle ▤); hover a day for a preview in the side panel, click to filter, or drag across days to select a range
-- **Sort** by newest, oldest, title, or domain
+- **Activity calendar** — a contribution-style heatmap (toggle ▤) with a summary-stats side panel (items, domains, tags, active days, avg/day, peak); hover a day or selection for its stats, click to filter, or drag across days to select a range
+- **Sort** by date, title, or domain (ascending/descending) — from the toolbar dropdown in any view, or by clicking table column headers; the two stay in sync
 - **Edit** any item's title, tags, note, and space
 - **Bulk actions** (table view) — select items to add tags, move to a space, open all, or delete; every delete asks for confirmation
 - **Export** the current (filtered) view as JSON or CSV

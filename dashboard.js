@@ -7,7 +7,8 @@ const state = {
   compact: false,         // dense rows / pill cards
   groupBy: 'none',        // 'none' | 'space' — orthogonal to view
   query: '',
-  sort: 'newest',
+  sortKey: 'savedAt',     // 'savedAt' | 'title' | 'domain'
+  sortDir: 'desc',        // 'asc' | 'desc'
   activeTags: new Set(),
   activeDomains: new Set(),
   activeBatch: null,      // collection id, or null
@@ -152,13 +153,39 @@ function visibleItems() {
     );
   });
 
-  const sorters = {
-    newest: (a, b) => b.savedAt - a.savedAt,
-    oldest: (a, b) => a.savedAt - b.savedAt,
-    title: (a, b) => a.title.localeCompare(b.title),
-    domain: (a, b) => a.domain.localeCompare(b.domain) || b.savedAt - a.savedAt
-  };
-  return items.sort(sorters[state.sort] || sorters.newest);
+  return items.sort(compareItems);
+}
+
+function compareItems(a, b) {
+  const dir = state.sortDir === 'asc' ? 1 : -1;
+  if (state.sortKey === 'title') return a.title.localeCompare(b.title) * dir || b.savedAt - a.savedAt;
+  if (state.sortKey === 'domain') return a.domain.localeCompare(b.domain) * dir || b.savedAt - a.savedAt;
+  return (a.savedAt - b.savedAt) * dir;  // savedAt
+}
+
+const SORT_LABELS = { savedAt: 'Added', title: 'Title', domain: 'Domain' };
+
+function persistSort() {
+  chrome.storage.local.set({ rtSortKey: state.sortKey, rtSortDir: state.sortDir });
+}
+
+function setSort(key) {
+  if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+  else { state.sortKey = key; state.sortDir = key === 'savedAt' ? 'desc' : 'asc'; }
+  persistSort();
+  render();
+}
+
+// Reflect the current sort on every header (static table + grouped tables) and
+// keep the toolbar dropdown in sync — it's the sort control for cards/pills.
+function syncSort() {
+  for (const th of document.querySelectorAll('[data-sort-key]')) {
+    const active = th.dataset.sortKey === state.sortKey;
+    th.classList.toggle('active', active);
+    const ind = th.querySelector('.sort-ind');
+    if (ind) ind.textContent = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
+  }
+  $('sortSelect').value = `${state.sortKey}:${state.sortDir}`;
 }
 
 function batchCounts() {
@@ -322,34 +349,93 @@ function itemsOnDay(k) {
   return state.items.filter((it) => dayKey(it.savedAt) === k);
 }
 
+function shortDay(k) {
+  return new Date(`${k}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function computeStats(items) {
+  const domains = new Map();
+  const tags = new Map();
+  const days = new Map();
+  for (const it of items) {
+    if (it.domain) domains.set(it.domain, (domains.get(it.domain) || 0) + 1);
+    for (const t of it.tags) tags.set(t, (tags.get(t) || 0) + 1);
+    const k = dayKey(it.savedAt);
+    days.set(k, (days.get(k) || 0) + 1);
+  }
+  const byCount = (a, b) => b[1] - a[1];
+  let busiest = null;
+  for (const [k, n] of days) if (!busiest || n > busiest.n) busiest = { k, n };
+  return {
+    count: items.length,
+    domains: domains.size,
+    tags: tags.size,
+    activeDays: days.size,
+    avg: days.size ? items.length / days.size : 0,
+    topDomains: [...domains.entries()].sort(byCount).slice(0, 5),
+    topTags: [...tags.entries()].sort(byCount).slice(0, 5),
+    busiest
+  };
+}
+
 // The info sidebar reflects (in priority): the day under the cursor, else the
-// selected range's summary, else a hint.
+// selected range, else everything. It favours summary stats over examples and
+// lays them out in columns so it stays within the heatmap's height.
 function renderCalInfo(hoverKey) {
   const box = $('calendarInfo');
   if (!box) return;
 
+  let scope;
+  let heading;
+  let single = false;
   if (hoverKey) {
-    const list = itemsOnDay(hoverKey).sort((a, b) => b.savedAt - a.savedAt);
-    const rows = list.slice(0, 7).map((it) =>
-      `<li title="${escapeHtml(it.title)}"><span class="ci-dot"></span>${escapeHtml(it.title)}</li>`).join('');
-    box.innerHTML = `
-      <div class="ci-date">${prettyDay(hoverKey)}</div>
-      <div class="ci-count">${list.length} item${list.length === 1 ? '' : 's'}</div>
-      ${list.length ? `<ul class="ci-list">${rows}</ul>${list.length > 7 ? `<div class="ci-more">+${list.length - 7} more</div>` : ''}` : '<div class="ci-empty">Nothing saved</div>'}`;
-    return;
-  }
-
-  if (state.range) {
+    scope = itemsOnDay(hoverKey);
+    heading = prettyDay(hoverKey);
+    single = true;
+  } else if (state.range) {
     const [from, to] = [dayKeyTs(state.range.start), dayKeyTs(state.range.end) + 86400000];
-    const count = state.items.filter((i) => i.savedAt >= from && i.savedAt < to).length;
-    const span = state.range.start === state.range.end
+    scope = state.items.filter((i) => i.savedAt >= from && i.savedAt < to);
+    heading = state.range.start === state.range.end
       ? prettyDay(state.range.start)
-      : `${prettyDay(state.range.start)} – ${prettyDay(state.range.end)}`;
-    box.innerHTML = `<div class="ci-date">${span}</div><div class="ci-count">${count} item${count === 1 ? '' : 's'} selected</div><div class="ci-hint">Hover a day for details</div>`;
-    return;
+      : `${shortDay(state.range.start)} – ${prettyDay(state.range.end)}`;
+  } else {
+    scope = state.items;
+    heading = 'All activity';
   }
 
-  box.innerHTML = '<div class="ci-hint">Hover a day to preview · click or drag to filter</div>';
+  const s = computeStats(scope);
+  const cell = (num, label) => `<div class="cinfo-stat"><span class="cinfo-num">${num}</span><span class="cinfo-label">${escapeHtml(label)}</span></div>`;
+
+  const cells = [cell(s.count, 'items'), cell(s.domains, 'domains'), cell(s.tags, 'tags')];
+  if (!single) {
+    cells.push(cell(s.activeDays, 'active days'));
+    cells.push(cell(s.count ? s.avg.toFixed(1) : '0', 'avg / day'));
+    cells.push(cell(s.busiest ? s.busiest.n : 0, s.busiest ? `peak ${shortDay(s.busiest.k)}` : 'peak'));
+  }
+
+  const domList = s.topDomains
+    .map(([d, n]) => `<li><span class="cinfo-name" title="${escapeHtml(d)}">${escapeHtml(d)}</span><span class="cinfo-n">${n}</span></li>`)
+    .join('');
+  const tagList = s.topTags
+    .map(([t, n]) => `<li><span class="cinfo-name"><span class="mini-tag">#${escapeHtml(t)}</span></span><span class="cinfo-n">${n}</span></li>`)
+    .join('');
+
+  const lists = s.count ? `
+    <div class="cinfo-lists">
+      <div class="cinfo-col">
+        <div class="cinfo-coltitle">Top domains</div>
+        <ul class="cinfo-list">${domList}</ul>
+      </div>
+      ${s.topTags.length ? `<div class="cinfo-col">
+        <div class="cinfo-coltitle">Top tags</div>
+        <ul class="cinfo-list">${tagList}</ul>
+      </div>` : ''}
+    </div>` : (single ? '<div class="cinfo-foot cinfo-empty">Nothing saved this day</div>' : '');
+
+  box.innerHTML = `
+    <div class="cinfo-head">${escapeHtml(heading)}</div>
+    <div class="cinfo-grid">${cells.join('')}</div>
+    ${lists}`;
 }
 
 // Compact card = a pill; the open/edit/delete controls slide in on the right on
@@ -463,7 +549,12 @@ function renderTable(items) {
 function tableBlockHtml(items) {
   return `<div class="table-wrap"><table class="research-table">
     <thead><tr>
-      <th class="col-check"></th><th>Title</th><th>Domain</th><th>Tags</th><th>Note</th><th>Added</th><th class="col-actions"></th>
+      <th class="col-check"></th>
+      <th class="sortable" data-sort-key="title">Title <span class="sort-ind"></span></th>
+      <th class="sortable" data-sort-key="domain">Domain <span class="sort-ind"></span></th>
+      <th>Tags</th><th>Note</th>
+      <th class="sortable" data-sort-key="savedAt">Added <span class="sort-ind"></span></th>
+      <th class="col-actions"></th>
     </tr></thead>
     <tbody>${items.map(tableRowHtml).join('')}</tbody>
   </table></div>`;
@@ -511,6 +602,7 @@ function render() {
   else if (state.view === 'cards') renderCards(items);
   else renderTable(items);
 
+  syncSort();
   renderBulkBar();
 }
 
@@ -839,7 +931,19 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-$('sortSelect').addEventListener('change', (e) => { state.sort = e.target.value; render(); });
+$('sortSelect').addEventListener('change', (e) => {
+  const [key, dir] = e.target.value.split(':');
+  state.sortKey = key;
+  state.sortDir = dir;
+  persistSort();
+  render();
+});
+
+// Clickable column headers (works for the main table and grouped tables).
+$('content').addEventListener('click', (e) => {
+  const th = e.target.closest('[data-sort-key]');
+  if (th) setSort(th.dataset.sortKey);
+});
 
 $('viewCards').addEventListener('click', () => setView('cards'));
 $('viewTable').addEventListener('click', () => setView('table'));
@@ -1049,7 +1153,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 /* ---------- init ---------- */
 
 async function init() {
-  const prefs = await chrome.storage.local.get([THEME_KEY, 'rtView', 'rtGroupBy', 'rtCompact', 'rtCalOpen']);
+  const prefs = await chrome.storage.local.get([THEME_KEY, 'rtView', 'rtGroupBy', 'rtCompact', 'rtCalOpen', 'rtSortKey', 'rtSortDir']);
+  if (['savedAt', 'title', 'domain'].includes(prefs.rtSortKey)) state.sortKey = prefs.rtSortKey;
+  if (prefs.rtSortDir === 'asc' || prefs.rtSortDir === 'desc') state.sortDir = prefs.rtSortDir;
   if (prefs[THEME_KEY]) {
     document.documentElement.dataset.theme = prefs[THEME_KEY];
     try { localStorage.setItem('rtTheme', prefs[THEME_KEY]); } catch (e) { /* ignore */ }

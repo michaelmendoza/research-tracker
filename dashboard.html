@@ -34,11 +34,13 @@
         <option value="week">This week</option>
         <option value="month">This month</option>
       </select>
-      <select id="sortSelect" class="sort-select" title="Sort">
-        <option value="newest">Newest first</option>
-        <option value="oldest">Oldest first</option>
-        <option value="title">Title A–Z</option>
-        <option value="domain">Domain A–Z</option>
+      <select id="sortSelect" class="sort-select" title="Sort by">
+        <option value="savedAt:desc">Newest first</option>
+        <option value="savedAt:asc">Oldest first</option>
+        <option value="title:asc">Title A–Z</option>
+        <option value="title:desc">Title Z–A</option>
+        <option value="domain:asc">Domain A–Z</option>
+        <option value="domain:desc">Domain Z–A</option>
       </select>
       <button id="calendarToggle" class="icon-btn" title="Toggle activity calendar">▤</button>
       <div class="menu-wrap">
@@ -114,11 +116,11 @@
         <thead>
           <tr>
             <th class="col-check"><input type="checkbox" id="checkAll" title="Select all" /></th>
-            <th>Title</th>
-            <th>Domain</th>
+            <th class="sortable" data-sort-key="title">Title <span class="sort-ind"></span></th>
+            <th class="sortable" data-sort-key="domain">Domain <span class="sort-ind"></span></th>
             <th>Tags</th>
             <th>Note</th>
-            <th>Added</th>
+            <th class="sortable" data-sort-key="savedAt">Added <span class="sort-ind"></span></th>
             <th class="col-actions"></th>
           </tr>
         </thead>

@@ -407,38 +407,61 @@ body {
 .cal-cell[data-day]:hover { outline: 1.5px solid var(--text-dim); outline-offset: 1px; }
 .cal-cell.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* Calendar info sidebar */
+/* Calendar info sidebar — summary stats laid out in columns, kept short */
 .calendar-info {
   flex: 1;
-  min-width: 160px;
-  max-width: 280px;
-  align-self: stretch;
+  min-width: 200px;
   border-left: 1px solid var(--border);
   padding-left: 18px;
-  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.ci-date { font-weight: 800; font-size: 13px; }
-.ci-count { color: var(--accent-2); font-weight: 700; margin-top: 2px; }
-.ci-list { list-style: none; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
-.ci-list li {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.cinfo-head { font-weight: 800; font-size: 13px; }
+
+.cinfo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
 }
-.ci-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
-.ci-more, .ci-empty, .ci-hint { color: var(--text-dim); margin-top: 8px; font-size: 11.5px; }
-.ci-hint { line-height: 1.5; }
+
+.cinfo-stat { display: flex; flex-direction: column; line-height: 1.15; }
+
+.cinfo-num {
+  font-size: 18px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.cinfo-label { font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.cinfo-lists { display: flex; gap: 18px; flex-wrap: wrap; }
+.cinfo-col { flex: 1; min-width: 130px; }
+.cinfo-coltitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+}
+.cinfo-list { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.cinfo-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.cinfo-name { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.cinfo-n { color: var(--text); font-weight: 700; flex-shrink: 0; }
+
+.cinfo-foot { font-size: 11.5px; color: var(--text-dim); }
+.cinfo-empty { color: var(--text-dim); }
 
 .calendar-hint { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
 
 @media (max-width: 720px) {
   .calendar-body { flex-direction: column; }
-  .calendar-info { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 14px; max-width: none; }
+  .calendar-info { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 14px; }
 }
 
 .lv0 { background: var(--surface-2); }
@@ -779,6 +802,11 @@ body {
 
 .col-check { width: 40px; }
 .col-actions { width: 100px; }
+
+.research-table th.sortable { cursor: pointer; user-select: none; transition: color 0.12s; }
+.research-table th.sortable:hover { color: var(--text); }
+.research-table th.sortable.active { color: var(--accent-2); }
+.sort-ind { font-size: 9px; }
 
 .research-table input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
 
