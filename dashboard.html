@@ -17,8 +17,13 @@
     </div>
 
     <div class="search-wrap">
-      <span class="search-icon">⌕</span>
+      <span class="search-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" />
+        </svg>
+      </span>
       <input id="searchInput" type="search" placeholder="Search titles, notes, tags, domains…  ( / )" autocomplete="off" />
+      <div class="search-suggest" id="searchSuggest" hidden></div>
     </div>
 
     <div class="topbar-controls">
@@ -44,12 +49,16 @@
       </select>
       <button id="calendarToggle" class="icon-btn" title="Toggle activity calendar">▤</button>
       <div class="menu-wrap">
-        <button id="exportBtn" class="icon-btn" title="Export">⤓</button>
-        <div class="menu" id="exportMenu">
+        <button id="dataBtn" class="icon-btn" title="Data">⤓</button>
+        <div class="menu" id="dataMenu">
           <button id="exportJson">Export JSON</button>
           <button id="exportCsv">Export CSV</button>
+          <button id="importJson">Import JSON…</button>
+          <div class="menu-sep"></div>
+          <button id="openTrash">Trash <span class="menu-badge" id="trashBadge">0</span></button>
         </div>
       </div>
+      <input id="importFile" type="file" accept="application/json,.json" hidden />
       <button id="themeToggle" class="icon-btn" title="Toggle theme">◐</button>
     </div>
   </header>
@@ -101,7 +110,7 @@
   </section>
 
   <div class="active-filters" id="activeFilters" hidden>
-    <span class="af-label">Filtering:</span>
+    <span class="af-label" id="resultCount"></span>
     <span id="activeFiltersChips"></span>
     <button id="clearFilters" class="btn-plain">Clear all</button>
   </div>
@@ -133,13 +142,22 @@
       <h2 id="emptyTitle">No research yet</h2>
       <p id="emptyText">Click the extension icon on any page to start capturing tabs, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.</p>
     </div>
+
+    <div id="scrollSentinel" hidden></div>
   </main>
 
   <div class="bulk-bar" id="bulkBar" hidden>
     <span id="bulkCount">0 selected</span>
     <button id="bulkTag" class="btn-soft">＋ Add tags</button>
     <button id="bulkMove" class="btn-soft">⊞ Move to space</button>
-    <button id="bulkOpen" class="btn-soft">↗ Open all</button>
+    <div class="menu-wrap">
+      <button id="bulkOpen" class="btn-soft">↗ Open all ▾</button>
+      <div class="menu menu-up" id="bulkOpenMenu">
+        <button data-open-target="current">This window</button>
+        <button data-open-target="new">New window</button>
+        <button data-open-target="incognito">Incognito window</button>
+      </div>
+    </div>
     <button id="bulkDelete" class="btn-danger">Delete</button>
     <button id="bulkClear" class="btn-plain">Clear</button>
   </div>
@@ -193,6 +211,24 @@
         <button type="submit" class="btn-save">Apply tags</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="trash-modal" id="trashModal">
+    <div class="trash-head">
+      <h3>Trash</h3>
+      <span class="trash-sub">Items are kept for 30 days, then removed permanently.</span>
+    </div>
+    <div class="trash-toolbar">
+      <label class="trash-selall"><input type="checkbox" id="trashSelAll" /> Select all</label>
+      <span class="trash-selcount" id="trashSelCount"></span>
+      <button type="button" id="trashRestoreSel" class="btn-soft sm" disabled>Restore selected</button>
+      <button type="button" id="trashDeleteSel" class="btn-soft sm danger" disabled>Delete selected</button>
+    </div>
+    <div class="trash-list" id="trashList"></div>
+    <div class="modal-actions">
+      <button type="button" id="emptyTrash" class="btn-danger">Empty trash</button>
+      <button type="button" id="trashClose" class="btn-plain">Close</button>
+    </div>
   </dialog>
 
   <dialog class="confirm-modal" id="confirmModal">

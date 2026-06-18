@@ -28,16 +28,17 @@ Open it from the popup (**Open dashboard →**) or with `Alt+Shift+D`.
 
 - **Cards ⇄ Table** views — cards for visual browsing, table for dense scanning with bulk actions
 - **Group by space** (⊞ toggle) — works with either view; breaks items into collapsible sections per saved window/space, each with rename / open-all / delete
-- **Compact** (≣ toggle) — denser table rows, and cards collapse into pills whose controls appear on hover
+- **Compact** (≣ toggle) — denser table rows, and cards collapse into pills whose controls slide in on hover; large libraries stay fast via windowed (virtualized) rendering
 - **Spaces** — windows saved with **Save window** / **Save all windows** become named spaces; filter to them via chips, rename and manage them in the grouped view, move items between them (bulk **Move to space** or per-item), or delete a whole space
-- **Search** (`/` to focus) across titles, URLs, domains, notes, and tags
+- **Search** (`/` to focus) across titles, URLs, domains, notes, and tags — with operators (`tag:ai`, `domain:arxiv.org`, `is:untagged`) and match highlighting
 - **Tag & domain chips** — click to filter, combine multiple; reveal them from the *tags* / *domains* stat
 - **Time range** — a toolbar dropdown (All time / Today / This week / This month); clicking the *this week* stat is a shortcut
 - **Activity calendar** — a contribution-style heatmap (toggle ▤) with a summary-stats side panel (items, domains, tags, active days, avg/day, peak); hover a day or selection for its stats, click to filter, or drag across days to select a range
 - **Sort** by date, title, or domain (ascending/descending) — from the toolbar dropdown in any view, or by clicking table column headers; the two stay in sync
 - **Edit** any item's title, tags, note, and space
-- **Bulk actions** (table view) — select items to add tags, move to a space, open all, or delete; every delete asks for confirmation
-- **Export** the current (filtered) view as JSON or CSV
+- **Bulk actions** (table view) — select items to add tags, move to a space, open all (this window / new window / incognito), or delete
+- **Trash** — deletes are recoverable: items go to a 30-day trash with an **Undo** toast; restore or empty from the data menu
+- **Export** the current (filtered) view as JSON or CSV, and **Import JSON** back (skips duplicates)
 - **Dark / light theme** toggle, remembered across sessions (no flash on load)
 - Live-updates if you save tabs while the dashboard is open
 
@@ -49,7 +50,8 @@ Everything is stored locally in `chrome.storage.local` — nothing leaves your m
 
 ```
 manifest.json    MV3 manifest (permissions: tabs, storage, contextMenus, alarms)
-storage.js       Shared data layer (items, collections, dedup, tag parsing)
+FEATURES.md      Detailed, versioned catalog of features + a future-ideas backlog
+storage.js       Shared data layer (items, collections, trash, dedup, tag parsing)
 background.js    Service worker: context menus, keyboard shortcuts, badge feedback
 theme-init.js    Applies the saved theme synchronously to avoid a flash on load
 popup.html/css/js      Quick-capture popup

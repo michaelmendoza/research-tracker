@@ -5,7 +5,11 @@
  */
 const STORE_KEY = 'researchItems';
 const BATCH_KEY = 'researchBatches';
+const TRASH_KEY = 'researchTrash';
 const THEME_KEY = 'rtTheme';
+
+// How long deleted items are recoverable before they're purged for good.
+const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function rtDomainOf(url) {
   try {
@@ -50,6 +54,20 @@ async function rtGetBatches() {
 
 async function rtSetBatches(batches) {
   await chrome.storage.local.set({ [BATCH_KEY]: batches });
+}
+
+async function rtGetTrash() {
+  const data = await chrome.storage.local.get(TRASH_KEY);
+  return Array.isArray(data[TRASH_KEY]) ? data[TRASH_KEY] : [];
+}
+
+async function rtSetTrash(trash) {
+  await chrome.storage.local.set({ [TRASH_KEY]: trash });
+}
+
+// Drop trashed items past the retention window. Returns the kept list.
+function rtPruneTrash(trash, now = Date.now()) {
+  return trash.filter((t) => now - (t.deletedAt || 0) < TRASH_RETENTION_MS);
 }
 
 function rtIsSavableUrl(url) {
