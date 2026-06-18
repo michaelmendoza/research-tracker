@@ -3,7 +3,7 @@
   "name": "Research Tracker",
   "description": "Capture and organize your web research. Save the current tab, a whole window, or everything — then browse it as cards or a table.",
   "version": "1.0.0",
-  "permissions": ["tabs", "storage", "contextMenus"],
+  "permissions": ["tabs", "storage", "contextMenus", "alarms"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Research Tracker",

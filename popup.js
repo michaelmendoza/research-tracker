@@ -12,18 +12,20 @@ function showToast(msg, success = true) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
 }
 
-function captureOpts() {
+function captureOpts(batch = null) {
   return {
     tags: rtParseTags($('tagsInput').value),
     note: $('noteInput').value.trim(),
-    batchId: `batch-${Date.now()}`
+    batch
   };
 }
 
-function reportResult({ added, skipped }) {
+function reportResult({ added, skipped, unsavable }) {
   if (added && skipped) showToast(`Saved ${added} · ${skipped} already saved`);
   else if (added) showToast(`Saved ${added === 1 ? 'tab' : added + ' tabs'} ✓`);
-  else showToast('Already in your research', false);
+  else if (skipped) showToast('Already in your research', false);
+  else if (unsavable) showToast('Nothing to save — browser pages can’t be saved', false);
+  else showToast('Nothing to save', false);
   refreshCounts();
 }
 
@@ -65,12 +67,12 @@ $('saveTab').addEventListener('click', async () => {
 
 $('saveWindow').addEventListener('click', async () => {
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  reportResult(await rtAddTabs(tabs, captureOpts()));
+  reportResult(await rtAddTabs(tabs, captureOpts({ source: 'window' })));
 });
 
 $('saveAll').addEventListener('click', async () => {
   const tabs = await chrome.tabs.query({});
-  reportResult(await rtAddTabs(tabs, captureOpts()));
+  reportResult(await rtAddTabs(tabs, captureOpts({ source: 'all' })));
 });
 
 $('openDashboard').addEventListener('click', () => {

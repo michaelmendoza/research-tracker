@@ -26,13 +26,17 @@ Duplicates are detected by URL and skipped automatically. Browser-internal pages
 
 Open it from the popup (**Open dashboard →**) or with `Alt+Shift+D`.
 
-- **Cards ⇄ Table** toggle — cards for visual browsing, table for dense scanning with bulk select + delete
+- **Cards · Table · Groups** views — cards for visual browsing, table for dense scanning with bulk actions, **Groups** to see each saved window/space as its own collapsible section
+- **Spaces** — windows saved with **Save window** / **Save all windows** become named spaces; rename them, filter to them (chip or Groups view), move items between them (bulk **Move to space** or per-item), or delete a whole space
 - **Search** (`/` to focus) across titles, URLs, domains, notes, and tags
-- **Tag chips** — click to filter, combine multiple tags
+- **Tag & domain chips** — click to filter, combine multiple; reveal them from the *tags* / *domains* stat
+- **Time range** — a toolbar dropdown (All time / Today / This week / This month); clicking the *this week* stat is a shortcut
+- **Activity calendar** — a contribution-style heatmap (toggle ▤); click a day to filter to it
 - **Sort** by newest, oldest, title, or domain
-- **Edit** any item's title, tags, and note; delete singly or in bulk
-- **Export** the current view as JSON or CSV
-- **Dark / light theme** toggle, remembered across sessions
+- **Edit** any item's title, tags, note, and space
+- **Bulk actions** (table view) — select items to add tags, move to a space, open all, or delete; every delete asks for confirmation
+- **Export** the current (filtered) view as JSON or CSV
+- **Dark / light theme** toggle, remembered across sessions (no flash on load)
 - Live-updates if you save tabs while the dashboard is open
 
 ## Data
@@ -42,10 +46,11 @@ Everything is stored locally in `chrome.storage.local` — nothing leaves your m
 ## Files
 
 ```
-manifest.json    MV3 manifest (permissions: tabs, storage, contextMenus)
-storage.js       Shared data layer (items, dedup, tag parsing)
+manifest.json    MV3 manifest (permissions: tabs, storage, contextMenus, alarms)
+storage.js       Shared data layer (items, collections, dedup, tag parsing)
 background.js    Service worker: context menus, keyboard shortcuts, badge feedback
+theme-init.js    Applies the saved theme synchronously to avoid a flash on load
 popup.html/css/js      Quick-capture popup
-dashboard.html/css/js  Full dashboard (cards/table, search, filters, export)
+dashboard.html/css/js  Full dashboard (cards/table, search, filters, collections, calendar, export)
 gen_icons.py     Regenerates icons/ (pure-stdlib PNG writer)
 ```

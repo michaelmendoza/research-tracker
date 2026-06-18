@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Research Tracker</title>
+  <script src="theme-init.js"></script>
   <link rel="stylesheet" href="dashboard.css" />
 </head>
 <body>
@@ -24,13 +25,21 @@
       <div class="view-toggle" role="tablist" aria-label="View mode">
         <button id="viewCards" class="toggle-btn active" role="tab" title="Card view">▦ Cards</button>
         <button id="viewTable" class="toggle-btn" role="tab" title="Table view">☰ Table</button>
+        <button id="viewGroups" class="toggle-btn" role="tab" title="Group by space">⊞ Groups</button>
       </div>
+      <select id="timeSelect" class="sort-select" title="Time range">
+        <option value="all">All time</option>
+        <option value="today">Today</option>
+        <option value="week">This week</option>
+        <option value="month">This month</option>
+      </select>
       <select id="sortSelect" class="sort-select" title="Sort">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
         <option value="title">Title A–Z</option>
         <option value="domain">Domain A–Z</option>
       </select>
+      <button id="calendarToggle" class="icon-btn" title="Toggle activity calendar">▤</button>
       <div class="menu-wrap">
         <button id="exportBtn" class="icon-btn" title="Export">⤓</button>
         <div class="menu" id="exportMenu">
@@ -43,16 +52,57 @@
   </header>
 
   <section class="stats" id="statsRow">
-    <div class="stat"><span class="stat-num" id="statTotal">0</span><span class="stat-label">items</span></div>
-    <div class="stat"><span class="stat-num" id="statDomains">0</span><span class="stat-label">domains</span></div>
-    <div class="stat"><span class="stat-num" id="statTags">0</span><span class="stat-label">tags</span></div>
-    <div class="stat"><span class="stat-num" id="statWeek">0</span><span class="stat-label">this week</span></div>
+    <button class="stat" id="statTotalBtn" data-stat="all" title="Show everything">
+      <span class="stat-num" id="statTotal">0</span><span class="stat-label">items</span>
+    </button>
+    <button class="stat" id="statDomainsBtn" data-stat="domains" title="Browse domains">
+      <span class="stat-num" id="statDomains">0</span><span class="stat-label">domains</span>
+    </button>
+    <button class="stat" id="statTagsBtn" data-stat="tags" title="Browse tags">
+      <span class="stat-num" id="statTags">0</span><span class="stat-label">tags</span>
+    </button>
+    <button class="stat" id="statWeekBtn" data-stat="week" title="Filter to the last 7 days">
+      <span class="stat-num" id="statWeek">0</span><span class="stat-label">this week</span>
+    </button>
   </section>
 
-  <section class="tag-bar" id="tagBar"></section>
+  <section class="calendar-panel" id="calendarPanel" hidden>
+    <div class="calendar-head">
+      <span class="panel-title">Activity</span>
+      <span class="calendar-legend">less
+        <i class="lv lv0"></i><i class="lv lv1"></i><i class="lv lv2"></i><i class="lv lv3"></i><i class="lv lv4"></i>
+        more</span>
+    </div>
+    <div class="calendar-heatmap" id="calendarHeatmap"></div>
+  </section>
+
+  <section class="facets">
+    <div class="facet-line" id="collectionsLine" hidden>
+      <span class="facet-label">Collections</span>
+      <div class="chip-row" id="collectionsBar"></div>
+    </div>
+
+    <div class="facet-line" id="domainsLine" hidden>
+      <span class="facet-label">Domains</span>
+      <div class="chip-row" id="domainBar"></div>
+    </div>
+
+    <div class="facet-line" id="tagsLine">
+      <span class="facet-label">Tags</span>
+      <div class="chip-row" id="tagBar"></div>
+    </div>
+  </section>
+
+  <div class="active-filters" id="activeFilters" hidden>
+    <span class="af-label">Filtering:</span>
+    <span id="activeFiltersChips"></span>
+    <button id="clearFilters" class="btn-plain">Clear all</button>
+  </div>
 
   <main id="content">
     <div class="cards-grid" id="cardsGrid"></div>
+
+    <div class="groups-wrap" id="groupsWrap" hidden></div>
 
     <div class="table-wrap" id="tableWrap" hidden>
       <table class="research-table">
@@ -80,7 +130,10 @@
 
   <div class="bulk-bar" id="bulkBar" hidden>
     <span id="bulkCount">0 selected</span>
-    <button id="bulkDelete" class="btn-danger">Delete selected</button>
+    <button id="bulkTag" class="btn-soft">＋ Add tags</button>
+    <button id="bulkMove" class="btn-soft">⊞ Move to space</button>
+    <button id="bulkOpen" class="btn-soft">↗ Open all</button>
+    <button id="bulkDelete" class="btn-danger">Delete</button>
     <button id="bulkClear" class="btn-plain">Clear</button>
   </div>
 
@@ -96,11 +149,52 @@
       <label>Note
         <textarea id="editNote" rows="3"></textarea>
       </label>
+      <label>Space
+        <select id="editSpace"></select>
+      </label>
       <div class="modal-actions">
         <button type="button" id="editCancel" class="btn-plain">Cancel</button>
         <button type="submit" class="btn-save">Save changes</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="edit-modal" id="moveModal">
+    <form id="moveForm">
+      <h3>Move to space</h3>
+      <label>Space
+        <select id="moveSelect"></select>
+      </label>
+      <label id="newSpaceRow" hidden>New space name
+        <input id="newSpaceName" type="text" placeholder="e.g. Q3 competitors" autocomplete="off" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="moveCancel" class="btn-plain">Cancel</button>
+        <button type="submit" class="btn-save">Move</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="edit-modal" id="tagsModal">
+    <form method="dialog" id="tagsForm">
+      <h3 id="tagsModalTitle">Add tags</h3>
+      <label>Tags <span class="label-hint">comma separated — added to every selected item</span>
+        <input id="bulkTagsInput" type="text" placeholder="e.g. ai, to-read" autocomplete="off" />
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="tagsCancel" class="btn-plain">Cancel</button>
+        <button type="submit" class="btn-save">Apply tags</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="confirm-modal" id="confirmModal">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button type="button" id="confirmCancel" class="btn-plain">Cancel</button>
+      <button type="button" id="confirmOk" class="btn-danger">Delete</button>
+    </div>
   </dialog>
 
   <div class="toast" id="toast" role="status"></div>
